@@ -37,7 +37,7 @@ namespace WebApp.Controllers
                 servidor = Environment.MachineName,
                 fechaUtc = DateTime.UtcNow
             };
-            return Ok(ApiResponse<object>.Success(info, "Bienvenido a la API de la tienda"));
+            return Ok(ApiResponse<object>.Success(info, "Bienvenido a la API de la tienda - desplegada con CI/CD"));
         }
 
         // GET api/estadisticas -> número de registros de cada tabla
