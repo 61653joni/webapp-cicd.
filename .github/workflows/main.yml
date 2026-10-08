@@ -109,21 +109,12 @@ jobs:
             # Primero se descarga la imagen nueva (el contenedor viejo sigue atendiendo mientras tanto)
             sudo docker pull "$IMAGE"
 
-            # Solo la primera vez: copiar la BD del contenedor anterior (webapp-ec2, puerto 8080) al volumen
-            if ! sudo docker volume inspect webapp-data >/dev/null 2>&1 \
-               && sudo docker ps -a --format '{{.Names}}' | grep -qx webapp-ec2; then
-              echo "Migrando datos de webapp-ec2 al volumen webapp-data"
-              rm -rf /tmp/webapp-data && mkdir -p /tmp/webapp-data
-              sudo docker cp webapp-ec2:/app/data/. /tmp/webapp-data/ || true
-              sudo docker volume create webapp-data
-              sudo docker run --rm -v webapp-data:/nuevo -v /tmp/webapp-data:/viejo --entrypoint cp "$IMAGE" -a /viejo/. /nuevo/
-            fi
-
-            # Detener y quitar el contenedor anterior y levantar la nueva versión en el puerto 80
+            # Detener y quitar el contenedor anterior y levantar la nueva versión en el puerto 80.
+            # La BD SQLite vive en el volumen webapp-data-v2, así que los datos sobreviven a cada despliegue
             sudo docker rm -f webapp webapp-ec2 2>/dev/null || true
             sudo docker run -d --name webapp --restart unless-stopped \
               -p 80:80 -p 6061:6061 \
-              -v webapp-data:/app/data \
+              -v webapp-data-v2:/app/data \
               "$IMAGE"
 
             # Esperar a que la API responda
