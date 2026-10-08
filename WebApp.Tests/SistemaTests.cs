@@ -114,11 +114,12 @@ namespace WebApp.Tests
         public async Task Limpiar_hace_backup_y_vacia_todas_las_tablas()
         {
             await Post("/api/usuarios", new { nombre = "A", email = "a@b.com", telefono = "1", activo = true });
+            var prendasAntes = (await Get("/api/prendas/count")).Data.GetInt32();
 
             var r = await Delete("/api/limpiar");
             Assert.Equal(HttpStatusCode.OK, r.Status);
             Assert.StartsWith("backup_", r.Data.GetProperty("backup").GetString());
-            Assert.Equal(10, r.Data.GetProperty("eliminados").GetProperty("prendas").GetInt32());
+            Assert.Equal(prendasAntes, r.Data.GetProperty("eliminados").GetProperty("prendas").GetInt32());
 
             var stats = await Get("/api/estadisticas");
             foreach (var tabla in stats.Data.EnumerateObject())

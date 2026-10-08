@@ -37,6 +37,16 @@ namespace WebApp.Tests
         }
 
         [Fact]
+        public async Task Las_prendas_de_demo_se_insertan_al_arrancar()
+        {
+            foreach (var demo in WebApp.Services.PrendasDemo.Lista)
+            {
+                var r = await Get($"/api/prendas/buscar?nombre={Uri.EscapeDataString(demo.Nombre)}");
+                Assert.Contains(r.Data.EnumerateArray(), p => p.GetProperty("nombre").GetString() == demo.Nombre.Trim());
+            }
+        }
+
+        [Fact]
         public async Task Filtrar_por_todos_los_catalogos()
         {
             var r = await Get("/api/prendas?categoria=Camiseta&talla=M&genero=Unisex&color=Blanco&marca=Zara");
