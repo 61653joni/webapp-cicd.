@@ -12,7 +12,7 @@ namespace WebApp.Services
         public static readonly PrendaRequest[] Lista =
         {
             // Ejemplo (quitar las // para activarla):
-            // new PrendaRequest { Nombre = " Chamarra CI/CD", CategoriaId = 4, MarcaId = 4, TallaId = 3, ColorId = 5, GeneroId = 3, Precio = 499.99m, Stock = 10 },
+            // new PrendaRequest { Nombre = "Chamarra demo CI/CD", CategoriaId = 4, MarcaId = 4, TallaId = 3, ColorId = 5, GeneroId = 3, Precio = 499.99m, Stock = 10 },
         };
 
         public static async Task AplicarAsync(AppDbContext db)
