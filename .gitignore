@@ -1,0 +1,40 @@
+# Compilación .NET
+bin/
+obj/
+*.user
+*.suo
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# Base de datos SQLite y respaldos (datos locales, no van al repo)
+*.db
+*.db-shm
+*.db-wal
+backups/
+backups-aws/
+
+# Pruebas y cobertura
+TestResults/
+coverage/
+coveragereport/
+*.coverage
+coverage.cobertura.xml
+
+# Node (pruebas con Jest)
+node_modules/
+
+# Secretos y credenciales: NUNCA al repositorio
+.env
+.env.*
+*.pem
+*.key
+appsettings.*.local.json
+
+# Logs y sistema
+*.log
+logs/
+.DS_Store
+Thumbs.db

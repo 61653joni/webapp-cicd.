@@ -1,0 +1,44 @@
+# Compilación y IDE
+bin/
+obj/
+.vs/
+.vscode/
+.idea/
+*.user
+
+# Control de versiones y CI
+.git/
+.gitignore
+.github/
+
+# Datos locales y respaldos
+backups/
+backups-aws/
+*.db
+*.db-shm
+*.db-wal
+
+# Pruebas
+WebApp.Tests/
+TestResults/
+coverage/
+coveragereport/
+node_modules/
+
+# Secretos
+.env
+.env.*
+*.pem
+*.key
+
+# Logs
+*.log
+logs/
+
+# Scripts y archivos que no necesita la imagen
+*.ps1
+*.http
+*.md
+Dockerfile
+docker-compose.yml
+.dockerignore

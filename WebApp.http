@@ -1,0 +1,42 @@
+@WebApp_HostAddress = http://localhost:5136
+
+### Listar todas las prendas
+GET {{WebApp_HostAddress}}/api/prendas
+Accept: application/json
+
+### Filtrar prendas (categoria, talla, genero, color)
+GET {{WebApp_HostAddress}}/api/prendas?genero=Mujer&talla=M
+Accept: application/json
+
+### Obtener una prenda por id
+GET {{WebApp_HostAddress}}/api/prendas/1
+Accept: application/json
+
+### Crear una prenda
+POST {{WebApp_HostAddress}}/api/prendas
+Content-Type: application/json
+
+{
+  "nombre": "Polo piqué",
+  "categoria": "Camiseta",
+  "talla": "L",
+  "color": "Azul marino",
+  "marca": "Lacoste",
+  "genero": "Hombre",
+  "precio": 85.00,
+  "stock": 10,
+  "disponible": true
+}
+
+### Actualizar una prenda
+PUT {{WebApp_HostAddress}}/api/prendas/1
+Content-Type: application/json
+
+{
+  "precio": 9.99,
+  "stock": 45,
+  "disponible": true
+}
+
+### Eliminar una prenda
+DELETE {{WebApp_HostAddress}}/api/prendas/1
