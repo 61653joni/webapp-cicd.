@@ -1,0 +1,148 @@
+name: CI/CD
+
+# CI en cada push o pull request a main; el build de la imagen y el despliegue solo en push a main
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Si llegan dos pushes seguidos, el despliegue más nuevo espera a que termine el anterior
+concurrency:
+  group: cicd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: webapp
+
+jobs:
+  # ---------------------------------------------------------------
+  # 1) Pruebas xUnit + cobertura (falla si la cobertura de líneas < 70%)
+  # ---------------------------------------------------------------
+  test:
+    name: Pruebas y cobertura
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Ejecutar pruebas (el resumen de cobertura sale en este log)
+        run: dotnet test WebApp.Tests/WebApp.Tests.csproj --configuration Release
+
+      - name: Resumen de cobertura en la página del run
+        if: always()
+        uses: danielpalme/ReportGenerator-GitHub-Action@5
+        with:
+          reports: WebApp.Tests/TestResults/coverage/coverage.cobertura.xml
+          targetdir: coveragereport
+          reporttypes: MarkdownSummaryGithub;Html
+
+      - name: Publicar resumen
+        if: always()
+        run: cat coveragereport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-cobertura
+          path: coveragereport
+
+  # ---------------------------------------------------------------
+  # 2) Imagen Docker -> Docker Hub con tags :latest y :<sha del commit>
+  # ---------------------------------------------------------------
+  docker:
+    name: Build y push a Docker Hub
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Preparar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login en Docker Hub (Personal Access Token)
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Construir y publicar imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------
+  # 3) Despliegue en EC2 por SSH: pull de la nueva versión, reemplazo del contenedor en el puerto 80
+  # ---------------------------------------------------------------
+  deploy:
+    name: Despliegue en AWS EC2
+    needs: docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegar por SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: IMAGE
+          script: |
+            set -e
+            echo "Desplegando $IMAGE"
+
+            # Primero se descarga la imagen nueva (el contenedor viejo sigue atendiendo mientras tanto)
+            sudo docker pull "$IMAGE"
+
+            # Solo la primera vez: copiar la BD del contenedor anterior (webapp-ec2, puerto 8080) al volumen
+            if ! sudo docker volume inspect webapp-data >/dev/null 2>&1 \
+               && sudo docker ps -a --format '{{.Names}}' | grep -qx webapp-ec2; then
+              echo "Migrando datos de webapp-ec2 al volumen webapp-data"
+              rm -rf /tmp/webapp-data && mkdir -p /tmp/webapp-data
+              sudo docker cp webapp-ec2:/app/data/. /tmp/webapp-data/ || true
+              sudo docker volume create webapp-data
+              sudo docker run --rm -v webapp-data:/nuevo -v /tmp/webapp-data:/viejo --entrypoint cp "$IMAGE" -a /viejo/. /nuevo/
+            fi
+
+            # Detener y quitar el contenedor anterior y levantar la nueva versión en el puerto 80
+            sudo docker rm -f webapp webapp-ec2 2>/dev/null || true
+            sudo docker run -d --name webapp --restart unless-stopped \
+              -p 80:80 -p 6061:6061 \
+              -v webapp-data:/app/data \
+              "$IMAGE"
+
+            # Esperar a que la API responda
+            for i in $(seq 1 30); do
+              if curl -fs http://localhost/api/health >/dev/null; then
+                echo "API en línea"
+                sudo docker image prune -f >/dev/null
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "La API no respondió a tiempo"
+            sudo docker logs --tail 50 webapp
+            exit 1
+
+      - name: Verificar la API pública
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          curl -fsS "http://$EC2_HOST/api/health"
+          echo
+          curl -fsS "http://$EC2_HOST/api/info"
