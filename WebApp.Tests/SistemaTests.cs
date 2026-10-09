@@ -12,7 +12,7 @@ namespace WebApp.Tests
         {
             var r = await Get("/api/health");
             Assert.Equal(HttpStatusCode.OK, r.Status);
-            Assert.Equal("OK", r.Data.GetString());
+            Assert.Equal("OK up", r.Data.GetString());
         }
 
         [Fact]
