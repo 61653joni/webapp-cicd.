@@ -22,10 +22,10 @@ namespace WebApp.Controllers
         [HttpGet("health")]
         public ActionResult<ApiResponse<string>> HealthCheck()
         {
-            return Ok(ApiResponse<string>.Success("OK up"));
+            return Ok(ApiResponse<string>.Success("OK up", "API funcionando working"));
         }
 
-        // GET api/info -> datos de la versión desple  gada (útil para comprobar cada despliegue)
+        // GET api/info -> datos de la versión desplegada (útil para comprobar cada despliegue)
         [HttpGet("info")]
         public ActionResult<ApiResponse<object>> Info()
         {
